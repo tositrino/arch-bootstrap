@@ -7,7 +7,9 @@
 # Contact: Arnau Sanchez <tokland@gmail.com>
 # Contributions:
 #  Steven Armstrong <steven-aur at armstrong.cc>
-#     update to work with arch key signing
+#    update to work with arch key signing
+#  THS <ths at hanskult dot de>
+#    updated package setup
 #
 # Install:
 #
@@ -38,16 +40,18 @@ fetch() { wget -c --passive-ftp --quiet "$@"; }
 
 # Packages needed by pacman (see get-pacman-dependencies.sh)
 PACMAN_PACKAGES=(
-  acl archlinux-keyring attr bzip2 curl expat glibc gpgme libarchive
-  libassuan libgpg-error libssh2 lzo2 openssl pacman pacman-mirrorlist xz zlib
+  acl archlinux-keyring attr bzip2 curl e2fsprogs expat gawk glibc gpgme keyutils krb5 libarchive
+  libassuan libgpg-error libcap libgssglue libssh2 lzo2 openssl pacman pacman-mirrorlist sed tar xz zlib
 )
-BASIC_PACKAGES=("${PACMAN_PACKAGES[@]}" filesystem)
-# pacman-key/bash: glibc ncurses readline
+BASIC_PACKAGES=("${PACMAN_PACKAGES[@]}" dosfstools filesystem jfsutils reiserfsprogs xfsprogs )
+BASIC_PACKAGES+=(diffutils file findutils pciutils usbutils)
+BASIC_PACKAGES+=(iputils net-tools)
 BASIC_PACKAGES+=(bash ncurses readline coreutils)
+BASIC_PACKAGES+=(systemd systemd-sysvcompat netctl)
 # gpg: bzip2 glibc libassuan libgcrypt libgpg-error ncurses readline zlib
 BASIC_PACKAGES+=(gnupg libgcrypt)
-EXTRA_PACKAGES=(grep gawk file tar systemd)
-COMMUNITY_PACKAGES=(haveged)
+EXTRA_PACKAGES=(dmidecode fuse gptfdisk haveged ntfs-3g parted rsync screen socat tcpdump)
+COMMUNITY_PACKAGES=(ipmitool macchanger mc minicom)
 
 # allow PACKDIR to be set from the outside
 : ${PACKDIR:='arch-bootstrap'}
@@ -190,6 +194,7 @@ main() {
   local DEST=$1   
 
   CORE_REPO="core/os/$ARCH"
+  EXTRA_REPO="extra/os/$ARCH"
   COMMUNITY_REPO="community/os/$ARCH"
   debug "core repository: $CORE_REPO"
   debug "community repository: $COMMUNITY_REPO"
@@ -199,9 +204,15 @@ main() {
   debug "destination directory created: $DEST"
 
   debug "core packages: ${BASIC_PACKAGES[*]}"
-  install_packages "$CORE_REPO" "${BASIC_PACKAGES[*]}"
+  LC_ALL=C install_packages "$CORE_REPO" "${BASIC_PACKAGES[*]}"
+
   debug "community packages: ${COMMUNITY_PACKAGES[*]}"
-  install_packages "$COMMUNITY_REPO" "${COMMUNITY_PACKAGES[*]}"
+  LC_ALL=C install_packages "$COMMUNITY_REPO" "${COMMUNITY_PACKAGES[*]}"
+
+  debug "extra packages: ${EXTRA_PACKAGES[*]}"
+  LC_ALL=C install_packages "$EXTRA_REPO" "${EXTRA_PACKAGES[*]}"
+  ##LC_ALL=C chroot "$DEST" /usr/bin/pacman --noconfirm --arch $ARCH \
+  ##-Sy --force ${EXTRA_PACKAGES[*]}
 
   # some packages leave files in /, so cleanup
   rm -f "$DEST/{.INSTALL,.PKGINFO}"
